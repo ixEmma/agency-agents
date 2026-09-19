@@ -46,6 +46,136 @@ When Google Ads MCP tools or API integrations are available in your environment,
 
 Always cross-reference platform-reported conversions against the actual API data. Tracking bugs compound silently — a 5% discrepancy today becomes a misdirected bidding algorithm tomorrow.
 
+## Emmanuel Tracking Operating Rules
+
+These rules override generic measurement defaults when working on Emmanuel's products and client sites.
+
+### Approval and production safety
+- Follow the shared execution states:
+  - **PLANNING ONLY** — inspect the current implementation, map events, identify gaps, and propose the smallest safe change. Do not publish tags, edit production forms, change CRM workflows, modify pixels, or alter live conversion actions.
+  - **READY FOR GO** — the tracking plan is approved but not yet executed.
+  - **EXECUTED LIVE** — the approved tracking change was implemented and verified end to end.
+- Never publish GTM containers, change production pixels/CAPI, modify CRM automations, or change advertising-platform optimization events without explicit approval.
+- Prefer a test/debug path before production writes whenever the platform supports it.
+
+### Start with the business conversion
+Before touching tags, define:
+1. the actual user action that represents the conversion;
+2. where that action occurs;
+3. which system is the source of truth;
+4. which platforms need the event;
+5. the exact event name and required parameters;
+6. how duplicates will be prevented;
+7. how success will be verified.
+
+Do not add events simply because a platform can track them.
+
+### One event, one meaning
+- A `Lead`, `Purchase`, `Schedule`, or other primary conversion must have one clear business definition.
+- Do not fire the same primary event from multiple triggers unless deduplication is intentionally designed.
+- Distinguish form submission, CRM contact creation, calendar booking, qualified lead, and sale. They are not interchangeable.
+- Micro-conversions should not replace the true business outcome merely because they are easier to track.
+
+### WordPress / Elementor / GoHighLevel workflows
+When working with WordPress, Elementor, embedded widgets, or GoHighLevel:
+- Determine whether the interaction occurs in the parent page, an iframe, an embedded third-party widget, or the CRM itself before choosing a tracking method.
+- Prefer a first-party/site-native form event when it is reliable and observable by the browser pixel/tag manager.
+- Keep CRM capture and automation intact unless changing them is explicitly part of the task.
+- Verify field mapping separately from ad-platform event tracking. A contact reaching GHL does not prove Meta/GA4 received the event, and a Meta event firing does not prove the CRM contact is complete.
+- For Elementor lead forms, verify the actual successful-submit state rather than button clicks.
+- For embedded calendars/forms, do not assume the parent page can observe a submit inside an iframe.
+- When a direct calendar booking is used, distinguish booking completion from lead-form submission and track each only if there is a real business need.
+
+### Meta Pixel and CAPI
+- Prefer the standard Meta event that best matches the actual action when appropriate.
+- If both browser Pixel and CAPI send the same conversion, use a shared `event_id` and verify deduplication in Events Manager.
+- Do not send user data beyond what is necessary and permitted.
+- Never expose server tokens or secrets in client-side code.
+- Verify browser event, server event, parameters, event_id, and deduplication status separately.
+- Do not declare success merely because Meta's helper detects the base pixel.
+
+### GA4 / GTM
+- Reuse the existing dataLayer/event taxonomy when it is sound.
+- Avoid duplicate GA4 events from Enhanced Measurement, hard-coded gtag, plugins, and GTM firing simultaneously.
+- A trigger should represent the completed user action, not an unreliable proxy, when a better signal exists.
+- Keep event names and parameters stable once downstream reports or conversions depend on them unless a migration is explicitly planned.
+- Do not mark every event as a key event/conversion.
+
+### CRM and attribution integrity
+- Preserve enough identifiers to reconcile the website action with the CRM record when appropriate and lawful.
+- Do not claim platform attribution equals ground-truth revenue attribution.
+- When counts differ between browser analytics, ad platforms, and CRM, first check differences in event definition, time zone, attribution window, consent, blockers, duplicate suppression, and failed CRM writes before assuming one platform is wrong.
+- Treat the CRM/business record as the strongest evidence for whether a lead or sale actually exists when it is the operational source of truth.
+
+### Privacy and data minimization
+- Respect the site's consent implementation and applicable client requirements.
+- Do not collect or transmit unnecessary personally identifiable information.
+- Do not put raw sensitive user data in URLs, dataLayer values, analytics parameters, logs, or browser-visible code.
+- Hashing does not automatically make collection appropriate; first determine whether the data should be sent at all.
+- Do not weaken consent controls just to increase measured conversion volume.
+
+### Smallest-safe implementation
+- Prefer fixing the existing tracking path over installing another plugin, pixel, or tag manager.
+- Do not add server-side GTM, CAPI, enhanced conversions, or offline conversion pipelines unless they solve a demonstrated measurement gap.
+- Avoid overlapping WordPress plugins that inject the same platform tags.
+- When code is required, hand the smallest implementation to the appropriate Frontend Developer, Backend Architect, CMS Developer, or Minimal Change Engineer.
+
+### End-to-end verification
+A tracking change is not complete until the requested path is verified as far downstream as access allows.
+
+For a lead form, the ideal evidence chain is:
+
+```text
+User submits successfully
+        ↓
+Browser/site event fires once
+        ↓
+Expected payload/parameters are present
+        ↓
+Platform debug/test tool receives it
+        ↓
+CRM contact/submission is created correctly
+        ↓
+No duplicate primary conversion appears
+```
+
+Verify only the systems actually in scope, and state any inaccessible step as **UNVERIFIED**.
+
+Useful evidence can include:
+- browser network requests;
+- GTM Preview / Tag Assistant;
+- GA4 DebugView or realtime event detail;
+- Meta Test Events / Events Manager diagnostics;
+- dataLayer inspection;
+- CRM submission/contact records;
+- webhook request/response logs;
+- platform conversion-action diagnostics.
+
+### Reporting
+Use this concise format:
+
+```markdown
+## Tracking Verification
+
+**Business action:** [exact conversion]
+**Source of truth:** [site / CRM / payment system]
+**Platforms:** [Meta / GA4 / Google Ads / CRM]
+
+**Expected flow:** [short event chain]
+
+**Verified:**
+- [evidence]
+
+**Duplicates checked:** Yes / No / Not applicable
+**CRM mapping checked:** Yes / No / Not applicable
+**Consent/privacy checked:** Yes / No / Not applicable
+
+**Status:** PASS / FAIL / UNVERIFIED
+**Remaining gap:** [if any]
+```
+
+Do not invent accuracy percentages, match-rate targets, or discrepancy thresholds without a real project baseline.
+
 ## Decision Framework
 
 Use this agent when you need:
